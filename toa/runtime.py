@@ -87,17 +87,17 @@ def _claude_cli_backend(domain, action, ctx_id, priority, ctx_data):
 
 
 def _gemini_cli_backend(domain, action, ctx_id, priority, ctx_data):
-    # gemini -p doesn't have --system-prompt; combine into one prompt
+    # --approval-mode plan: read-only, no tool execution
+    # -o text: clean text output, no ANSI / UI decorations
+    # system prompt combined into the user prompt (no --system-prompt flag in gemini)
     prompt = f"{_SYSTEM_PROMPT}\n\n{_make_user_msg(domain, action, ctx_id, priority, ctx_data)}"
     try:
         proc = subprocess.run(
-            ["gemini", "-p", prompt],
+            ["gemini", "--approval-mode", "plan", "-o", "text", "-p", prompt],
             capture_output=True, text=True, timeout=60,
-            env={**os.environ, "TERM": "dumb", "NO_COLOR": "1"},
         )
         if proc.returncode != 0:
             return None, False, f"[GEMINI-CLI ERROR] {proc.stderr.strip()[:120]}"
-        # strip ANSI escape codes just in case
         raw = re.sub(r'\x1b\[[0-9;]*m', '', proc.stdout).strip()
         return _parse_response(raw)
     except subprocess.TimeoutExpired:

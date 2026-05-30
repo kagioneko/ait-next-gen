@@ -68,9 +68,8 @@ def _call_gemini(prompt: str) -> str:
     combined = f"{_SYSTEM}\n\n{prompt}"
     try:
         proc = subprocess.run(
-            ["gemini", "-p", combined],
+            ["gemini", "--approval-mode", "plan", "-o", "text", "-p", combined],
             capture_output=True, text=True, timeout=90,
-            env={**os.environ, "TERM": "dumb", "NO_COLOR": "1"},
         )
         raw = re.sub(r'\x1b\[[0-9;]*m', '', proc.stdout).strip()
         return raw if proc.returncode == 0 else f"; [ERROR] {proc.stderr.strip()[:200]}"
