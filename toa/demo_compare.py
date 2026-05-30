@@ -107,7 +107,7 @@ def main():
     parser.add_argument("--sample", default="sqli_vulnerable",
                         choices=list(SAMPLES.keys()))
     parser.add_argument("--backends", nargs="+",
-                        default=["claude_cli", "codex_cli"])
+                        default=["claude_cli", "gemini_cli", "codex_cli"])
     parser.add_argument("--all-samples", action="store_true")
     args = parser.parse_args()
 

@@ -86,6 +86,26 @@ def _claude_cli_backend(domain, action, ctx_id, priority, ctx_data):
         return None, False, "[CLI ERROR] `claude` not found — is Claude Code installed?"
 
 
+def _gemini_cli_backend(domain, action, ctx_id, priority, ctx_data):
+    # gemini -p doesn't have --system-prompt; combine into one prompt
+    prompt = f"{_SYSTEM_PROMPT}\n\n{_make_user_msg(domain, action, ctx_id, priority, ctx_data)}"
+    try:
+        proc = subprocess.run(
+            ["gemini", "-p", prompt],
+            capture_output=True, text=True, timeout=60,
+            env={**os.environ, "TERM": "dumb", "NO_COLOR": "1"},
+        )
+        if proc.returncode != 0:
+            return None, False, f"[GEMINI-CLI ERROR] {proc.stderr.strip()[:120]}"
+        # strip ANSI escape codes just in case
+        raw = re.sub(r'\x1b\[[0-9;]*m', '', proc.stdout).strip()
+        return _parse_response(raw)
+    except subprocess.TimeoutExpired:
+        return None, False, "[GEMINI-CLI ERROR] timeout"
+    except FileNotFoundError:
+        return None, False, "[GEMINI-CLI ERROR] `gemini` not found — install @google/gemini-cli"
+
+
 def _codex_cli_backend(domain, action, ctx_id, priority, ctx_data):
     prompt = f"{_SYSTEM_PROMPT}\n\n{_make_user_msg(domain, action, ctx_id, priority, ctx_data)}"
     try:
@@ -189,6 +209,7 @@ def _anthropic_api_backend(domain, action, ctx_id, priority, ctx_data):
 _BACKENDS = {
     "claude_cli":    _claude_cli_backend,
     "codex_cli":     _codex_cli_backend,
+    "gemini_cli":    _gemini_cli_backend,   # Antigravity (gemini -p)
     "gemini_api":    _gemini_api_backend,
     "anthropic_api": _anthropic_api_backend,
     "mock":          _mock_backend,
