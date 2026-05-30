@@ -1,4 +1,4 @@
-"""TOA Packet — parser for the 4-char tape format and special opcodes"""
+"""TOA Packet — parser for the 4-char tape format, special opcodes, and CPL links"""
 import re
 from dataclasses import dataclass
 from typing import Optional
@@ -7,37 +7,68 @@ from typing import Optional
 @dataclass
 class TOAPacket:
     raw: str
-    opcode: str          # 'EXEC' | 'JIF' | 'JMP' | 'CTX_LOAD' | 'CTX_PUSH' | 'DEF'
+    opcode: str
+    # EXEC fields
     domain: Optional[str] = None
     ctx_id: Optional[int] = None
     action: Optional[str] = None
     priority: Optional[int] = None
-    operand: Optional[int] = None    # JIF/JMP offset
-    def_type: Optional[str] = None  # 'd' or 'a'
+    # JIF / JMP
+    operand: Optional[int] = None
+    # DEF
+    def_type: Optional[str] = None
     def_char: Optional[str] = None
     def_name: Optional[str] = None
+    # CPL_LINK
+    cpl_src: Optional[int] = None
+    cpl_edge: Optional[str] = None
+    cpl_dst: Optional[int] = None
 
     def __repr__(self):
-        if self.opcode == 'EXEC':
-            return (f"EXEC  domain={self.domain} ctx=#{self.ctx_id} "
-                    f"action={self.action} priority={self.priority}")
-        if self.opcode == 'JIF':
-            return f"JIF   +{self.operand}"
-        if self.opcode == 'JMP':
-            return f"JMP   +{self.operand}"
-        if self.opcode == 'CTX_LOAD':
-            return f"CTX_LOAD  #{self.ctx_id}"
-        if self.opcode == 'CTX_PUSH':
-            return f"CTX_PUSH  #{self.ctx_id}"
-        if self.opcode == 'DEF':
-            return f"DEF   [{self.def_type}:{self.def_char}:{self.def_name}]"
-        return f"??? {self.raw}"
+        match self.opcode:
+            case 'EXEC':
+                return (f"EXEC  domain={self.domain} ctx=#{self.ctx_id} "
+                        f"action={self.action} priority={self.priority}")
+            case 'JIF':
+                return f"JIF   +{self.operand}"
+            case 'JMP':
+                return f"JMP   +{self.operand}"
+            case 'CTX_LOAD':
+                return f"CTX_LOAD  #{self.ctx_id}"
+            case 'CTX_PUSH':
+                return f"CTX_PUSH  #{self.ctx_id}"
+            case 'DEF':
+                return f"DEF   [{self.def_type}:{self.def_char}:{self.def_name}]"
+            case 'CPL_LINK':
+                return f"LINK  #{self.cpl_src:02d} =={self.cpl_edge}==> #{self.cpl_dst:02d}"
+            case _:
+                return f"??? {self.raw}"
 
 
 _HEX = '0123456789abcdef'
 
 def _parse_ctx(ch: str) -> int:
     return _HEX.index(ch.lower())
+
+
+# CPL link: #04 =>creates=> #09  or  #4 ==violates=> #9
+_CPL_RE = re.compile(
+    r'^#([0-9a-f]{1,2})\s*(?:=>|==)([a-z]+)=>\s*#([0-9a-f]{1,2})$',
+    re.IGNORECASE,
+)
+
+
+def parse_line(line: str) -> Optional[TOAPacket]:
+    """Try to parse a whole line as a CPL link. Returns None if it doesn't match."""
+    m = _CPL_RE.fullmatch(line.strip())
+    if m:
+        return TOAPacket(
+            raw=line.strip(), opcode='CPL_LINK',
+            cpl_src=int(m.group(1), 16),
+            cpl_edge=m.group(2).lower(),
+            cpl_dst=int(m.group(3), 16),
+        )
+    return None
 
 
 def parse_packet(token: str) -> TOAPacket:
@@ -51,7 +82,7 @@ def parse_packet(token: str) -> TOAPacket:
                          def_char=m.group(2),
                          def_name=m.group(3))
 
-    # ?bNN — jump if false (top of stack == 0)
+    # ?bNN — jump if false
     m = re.fullmatch(r'\?b([0-9a-f]{2})', token)
     if m:
         return TOAPacket(raw=token, opcode='JIF', operand=int(m.group(1), 16))
@@ -87,12 +118,23 @@ def parse_packet(token: str) -> TOAPacket:
 
 
 def tokenize(tape: str) -> list[TOAPacket]:
-    """Split a tape string (newlines / spaces / semicolons as delimiters) into packets."""
+    """Parse a tape string into packets.
+
+    Lines matching the CPL link syntax (#src =>type=> #dst) are parsed as a
+    single CPL_LINK packet. All other lines are split by whitespace and each
+    token parsed as a standard TOA packet.
+    """
     tokens = []
     for line in tape.splitlines():
-        line = line.split(';')[0].strip()   # strip inline comments
+        line = line.split(';')[0].strip()
         if not line:
             continue
+        # Try whole-line CPL link first
+        cpl = parse_line(line)
+        if cpl:
+            tokens.append(cpl)
+            continue
+        # Otherwise tokenize normally
         for tok in line.split():
             tokens.append(parse_packet(tok))
     return tokens

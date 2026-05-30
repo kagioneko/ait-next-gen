@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 from .dictionary import Dictionary, default_dictionary
+from .graph import GraphStore, Conflict
 from .packet import TOAPacket, tokenize
 
 
@@ -22,6 +23,7 @@ class ExecResult:
 class TOAMachineState:
     stack: List[Any] = field(default_factory=list)
     ctx: Dict[int, Any] = field(default_factory=dict)   # #0 .. #15
+    graph: GraphStore = field(default_factory=GraphStore)
     active_ctx: int = 0
     ip: int = 0
     halted: bool = False
@@ -101,6 +103,8 @@ class TOAMachine:
                 self._log(state, f"  → #{pkt.ctx_id} ← {repr(val)[:40]}")
             case 'DEF':
                 self._def(pkt)
+            case 'CPL_LINK':
+                self._cpl_link(pkt, state)
             case _:
                 self._log(state, f"  !! unknown opcode {pkt.opcode}")
 
@@ -135,6 +139,18 @@ class TOAMachine:
                                   f"[Dynamic] added at dict v{self.dict.version}")
         self._log(None, f"  DEF dict[{pkt.def_type}:{pkt.def_char}] = '{pkt.def_name}'  "
                         f"(dict v{self.dict.version})")
+
+    def _cpl_link(self, pkt: TOAPacket, state: TOAMachineState):
+        edge = state.graph.link(pkt.cpl_src, pkt.cpl_edge, pkt.cpl_dst)
+        self._log(state, f"  → graph: {edge}")
+        # check for conflicts immediately after linking
+        conflicts = state.graph.conflicts()
+        if conflicts:
+            for c in conflicts:
+                self._log(state, f"  ⚡ {c}")
+            state.push(0)   # signal conflict to stack
+        else:
+            state.push(1)
 
     def _log(self, state, msg: str):
         if self.verbose:

@@ -18,6 +18,7 @@ Commands:
   file <path>    Execute a tape file
   ctx            Show all ctx registers
   stack          Show current stack
+  graph          Show CPL graph (edges + conflicts)
   dict           Show active dictionary
   help           This message
   quit           Exit
@@ -30,6 +31,11 @@ Packet syntax:
   >>02           CTX_PUSH  pop stack → #2
   def:[d:n:neuro]  DEF   add domain 'n' = 'neuro'
   def:[a:f:fix]    DEF   add action 'f' = 'fix'
+
+CPL link syntax (whole line):
+  #01 =>creates=> #02     link: #1 creates #2
+  #02 ==requires=> #03    link: #2 requires #3
+  #02 ==violates=> #04    link: #2 violates #4  (triggers conflict if also requires)
 """
 
 
@@ -61,6 +67,14 @@ def main():
         if line == 'stack':
             if state:
                 print(f"  {state.stack}")
+            else:
+                print("  (no state yet)")
+            continue
+
+        if line == 'graph':
+            if state:
+                print(state.graph.render())
+                print(state.graph.summary())
             else:
                 print("  (no state yet)")
             continue
