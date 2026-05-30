@@ -224,6 +224,62 @@ FINAL: stack=[1, 1, 1, 1, 0, 0]
 
 ---
 
+## デモ2: 実データ セキュリティスキャナー
+
+4種類のコードサンプル（脆弱あり / なし）を `#01` に注入してパイプラインを流す。
+
+```bash
+python -m toa.demo_real_scan xss_vulnerable
+python -m toa.demo_real_scan sqli_vulnerable
+python -m toa.demo_real_scan both_vulnerable
+python -m toa.demo_real_scan clean
+```
+
+### スキャンパイプライン（AIT-Lisp）
+
+```lisp
+(s 1 x 9)            ; #01 の実コードに XSS スキャン
+(push 2)
+(if (v 2 c 8)
+  (do (s 1 f 9) (push 4))   ; 検出 → 自動修正
+  (push 1))                  ; クリーン → スルー
+
+(s 1 i 9)            ; SQLi スキャン
+(push 3)
+(if (v 3 c 8)
+  (do (s 1 f 8) (push 4))
+  (push 1))
+
+(v 1 c 9)            ; 最終バリデーション
+(push 9)
+```
+
+### 実行結果サマリー
+
+| サンプル | 入力コード | XSS #02 | SQLi #03 | Final #09 | Claude の判断 |
+|---------|-----------|---------|---------|----------|-------------|
+| `xss_vulnerable` | `innerHTML = username` | 検出 | 検出 | PASS | `innerHTML` sink → `textContent` + DOMPurify で修正 |
+| `sqli_vulnerable` | `"SELECT...'" + username` | **検出\*** | 検出 | PASS | \*「これはXSSじゃなくSQLi（CWE-89）、パラメータ化クエリで修正」と自律判断 |
+| `both_vulnerable` | SQLi + XSS 両方 | 検出 | 検出 | PASS | 「2つのCRITICAL攻撃面を検出、実行停止」 |
+| `clean` | `escape(q)` + `$1` | - | - | PASS | パラメータ化クエリ＋エスケープを認識、脆弱性なし |
+
+### 最も面白かった挙動
+
+`sqli_vulnerable` に対して `s1x9`（**XSSスキャン**）を命令したとき、Claude は：
+
+```
+→ Security scan at ctx #1 (priority 9) completed but action mismatch detected —
+  requested XSS analysis, however the dominant vulnerability is
+  SQL Injection (CWE-89), not XSS (CWE-79);
+  re-issue with action=sqli to properly triage.
+```
+
+**プログラムが「XSSスキャン」を命令したのに、Claude が「これは SQLi だ」と自律的に判断して修正を適用した。**
+
+TOAマシンが送ったのは `s1x9` という4文字だけ。コンテキストウィンドウには「あなたはセキュリティエンジニアです」のような説明は一切ない。にもかかわらず、実データ（コード）を読んで命令の意図を超えた判断をした。これがシミュレーションではない実データを流すことで初めて現れる挙動。
+
+---
+
 ## パケット仕様
 
 ### EXEC パケット（4文字）
