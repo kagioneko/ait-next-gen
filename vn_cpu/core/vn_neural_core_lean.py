@@ -124,9 +124,31 @@ class VNNeuralCoreLean:
         full_inst = "".join(instruction_tokens)
         logger.info(f"✅ [LEAN-COMMIT] Generated ISA: {full_inst}")
         
-        # Pass to Runtime for Validation
-        self.runtime.commit(full_inst)
-        return full_inst
+        # Pass to Runtime for Validation and Actuation
+        success, msg, irq_report = self.runtime.commit(full_inst)
+        return success, full_inst, irq_report
+
+    def execute_task_with_reflex(self, task: str, max_retries: int = 2):
+        """Executes a task and automatically handles IRQs via reflex prompting."""
+        logger.info(f"--- Processing Task: {task} ---")
+        
+        current_task = task
+        for i in range(max_retries + 1):
+            success, inst, irq_report = self.execute_instruction_cycle(current_task)
+            
+            if success:
+                logger.info(f"✨ Task successful via {inst}")
+                return True
+            
+            if irq_report:
+                logger.warning(f"⚠️ [REFLEX] IRQ Detected: {irq_report}. Recalibrating...")
+                # Create a 'Reflex Task' to fix the conflict
+                current_task = f"FIX CONFLICT: {irq_report}. Neutralize offending state."
+            else:
+                logger.error("❌ Malformed instruction or unrecoverable error.")
+                break
+                
+        return False
 
 def run_lean_simulation():
     print("\n" + "🍃 "*15)
@@ -135,8 +157,8 @@ def run_lean_simulation():
     print("🍃 "*15 + "\n")
     
     core = VNNeuralCoreLean(
-        model_path="/app/vn-cpu/qwen2.5-0.5b-instruct-q4_k_m.gguf",
-        isa_path="/app/vn-cpu/isa_qwen2.5_0.5b.json"
+        model_path="/app/vn_cpu/qwen2.5-0.5b-instruct-q4_k_m.gguf",
+        isa_path="/app/vn_cpu/isa_qwen2.5_0.5b.json"
     )
     
     # 🧪 Scenario: A sensitive leak in ctx1

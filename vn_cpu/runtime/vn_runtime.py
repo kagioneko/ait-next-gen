@@ -82,6 +82,14 @@ class VNRuntime:
         # System Log for observation
         self.history = []
 
+    @property
+    def graph(self):
+        """TOA Compatibility: Returns an object with an '_edges' attribute."""
+        class GraphProxy:
+            def __init__(self, edges): self._edges = edges
+            def summary(self): return f"nodes={len(self._edges)} edges={len(self._edges)}"
+        return GraphProxy(self.validator.edges)
+
     def _actuate(self, domain, target, action, priority):
         """Interprets the 4-phase instruction into a physical operation."""
         msg = f"Unknown Domain: {domain}"
@@ -120,9 +128,9 @@ class VNRuntime:
         logger.info(f"[ACTUATOR] {msg}")
         return msg
 
-    def commit(self, instruction: str) -> bool:
-        """Attempts to commit an instruction to the system state."""
-        if len(instruction) < 4: return False
+    def commit(self, instruction: str) -> tuple[bool, str, Optional[str]]:
+        """Attempts to commit an instruction. Returns (success, act_msg, irq_report)."""
+        if len(instruction) < 4: return False, "Malformed", None
         
         self.instruction_count += 1
         
@@ -135,14 +143,16 @@ class VNRuntime:
             
         # 2. Validate
         if not self.validator.validate():
-            logger.error(f"❌ [IRQ 0x03] Logic Conflict Detected! Triggering Rollback.")
+            irq_msg = f"CONFLICT: Domain {d} Target {t} caused graph violation."
+            logger.error(f"❌ [IRQ 0x03] {irq_msg} Triggering Rollback.")
+            
             safe_state = self.rollback_mgr.rollback()
             if safe_state:
                 self.ctx = safe_state.ctx_snapshot
                 self.validator.edges = safe_state.graph_edges
                 self.instruction_count = safe_state.instruction_count
-            return False
+            return False, act_msg, irq_msg
 
         logger.info(f"✨ [COMMIT] Instruction {instruction} applied successfully: {act_msg}")
         self.history.append({"inst": instruction, "msg": act_msg})
-        return True
+        return True, act_msg, None

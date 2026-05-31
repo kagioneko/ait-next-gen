@@ -10,6 +10,8 @@ from .enzymes_library import (
     create_logic_enzymes,
     create_system_enzymes
 )
+from .resonance import ResonanceChamber, Resonator
+from .fluidic import FluidicCircuit, Valve
 
 __all__ = [
     "TOAMachine", "TOAMachineState",
@@ -21,5 +23,7 @@ __all__ = [
     "OGLRuntime", "Objective",
     "create_security_enzymes",
     "create_logic_enzymes",
-    "create_system_enzymes"
+    "create_system_enzymes",
+    "ResonanceChamber", "Resonator",
+    "FluidicCircuit", "Valve",
 ]

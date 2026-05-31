@@ -9,6 +9,8 @@ VN-CPU moves away from free-form chat generation. It enforces a strict **Neural 
 - **VN-CPU (Neural ISA):** Deterministic 4-character instruction format `[D][T][A][P]`.
 - **SEL (Semantic Enzyme Language):** A metabolic 'soup' where enzymes (security/logic) consume threats.
 - **CRL (Cognitive Resonance Language):** Vector-based analog logic using 'Chords' and 'Resonators'.
+- **FTC (Fluidic Token Circuit):** Analog flow of context based on 'Token Pressure'.
+- **UNO (Unified Neural Organism):** A modular bridge that connects all of the above into a single entity.
 
 ## 🛠️ Architecture
 
