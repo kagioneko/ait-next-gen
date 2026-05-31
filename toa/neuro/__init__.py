@@ -12,6 +12,7 @@ Usage:
 from .loader import load_snapshots, load_latest, NeuroSnapshot
 from .mapper import CTX_TO_DIM, DIM_TO_CTX, CPL_RULES, build_neuro_dictionary
 from .simulator import run_simulation, SimResult
+from .loop import run_loop, IterResult
 
 __all__ = [
     "NeuroSnapshot",
@@ -23,4 +24,6 @@ __all__ = [
     "build_neuro_dictionary",
     "run_simulation",
     "SimResult",
+    "run_loop",
+    "IterResult",
 ]
