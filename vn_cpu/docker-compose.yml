@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  vn-cpu-core:
+    build: .
+    container_name: vn_cpu_v04
+    volumes:
+      - .:/app/vn-cpu
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    # Strict isolation
+    cpu_shares: 256
+    mem_limit: 512m
+    command: tail -f /dev/null

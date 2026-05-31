@@ -1,124 +1,218 @@
 import hashlib
 import re
+import copy
+import random
 
 class Symbol(str): pass
 
 def parse(program):
-    """Parses S-expressions into nested lists of Symbols."""
     tokens = re.findall(r'\(|\)|[^\s()]+', program)
     def read_from_tokens(tokens):
         if not tokens: return None
         token = tokens.pop(0)
         if token == '(':
             lst = []
-            while tokens[0] != ')':
+            while tokens and tokens[0] != ')':
                 lst.append(read_from_tokens(tokens))
-            tokens.pop(0) # pop ')'
+            if tokens: tokens.pop(0)
             return lst
         else:
             try: return int(token)
             except ValueError: return Symbol(token)
-    return read_from_tokens(tokens)
+    
+    exprs = []
+    while tokens:
+        exprs.append(read_from_tokens(tokens))
+    return exprs
+
+class QuantumVar:
+    def __init__(self, true_val, decoy_val):
+        self.true_val = true_val
+        self.decoy_val = decoy_val
+    def observe(self, observer):
+        if observer == "KERNEL":
+            print(f"[QUANTUM-OBSERVE] KERNEL observed. Wavefunction collapsed to True Value.")
+            return self.true_val
+        else:
+            print(f"[QUANTUM-OBSERVE] {observer} observed. Wavefunction collapsed to Decoy.")
+            return self.decoy_val
 
 class AITRuntime:
-    """The next-gen AIT-Lisp Evaluator with Content-Addressed Functions."""
+    """AIT-Lisp v0.5: The Esoteric Singularity."""
     def __init__(self):
-        self.store = {} # Hash -> Function/AST
+        self.store = {}
         self.env = {
-            's': self._security_domain,
-            'm': self._memory_domain,
-            'echo': lambda x: print(f"[ECHO] {x}")
+            'echo': lambda x: print(f"[ECHO] {x}"),
+            'quine-infect': self._quine_infect,
+            'befunge-eval': self._befunge_eval,
+            'prove-safe': self._prove_safe,
+            'gol-tick': self._gol_tick
         }
-        self.corruption = 0
+        self.gol_memory = [
+            [0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0],
+            [1, 1, 1, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0]
+        ]
 
-    def _security_domain(self, ctx_id, action, priority):
-        """Native S-domain implementation."""
-        print(f"--- [SEC] Executing Action '{action}' on Ctx {ctx_id} (P:{priority}) ---")
-        if priority > 8:
-            # Simulate an algebraic effect: Ask the OS if we should allow high-priority SEC
-            yield ("EFFECT_AUTH_REQ", {"ctx": ctx_id, "action": action})
-        return f"SEC_RESULT_{action}"
+    # --- 1. Quine / Self-Replication ---
+    def _quine_infect(self, target_ast):
+        print("[QUINE-INFECT] Biohazard! Injecting AST into all memory cells...")
+        keys = list(self.env.keys())
+        for k in keys:
+            if not callable(self.env[k]): # Infect only data
+                self.env[k] = copy.deepcopy(target_ast)
+        return "INFECTION_COMPLETE"
 
-    def _memory_domain(self, ctx_id, action, priority):
-        print(f"--- [MEM] {action} on {ctx_id} ---")
-        return f"MEM_OK"
+    # --- 2. 2D Befunge Execution ---
+    def _befunge_eval(self, *args):
+        print("\n[BEFUNGE-EVAL] Initiating 2D Spatial Execution...")
+        if args and isinstance(args[0], str):
+            grid_str = args[0]
+        else:
+            grid_str = "2>3+v\n  @ .<"
+        grid = [list(row.ljust(5)) for row in grid_str.split('\n')]
+        x, y = 0, 0
+        dx, dy = 1, 0 # moving right
+        stack = []
+        steps = 0
+        output = ""
+        while steps < 50: # max steps
+            if y < 0 or y >= len(grid) or x < 0 or x >= len(grid[y]):
+                break
+            char = grid[y][x]
+            if char == '>': dx, dy = 1, 0
+            elif char == '<': dx, dy = -1, 0
+            elif char == '^': dx, dy = 0, -1
+            elif char == 'v': dx, dy = 0, 1
+            elif char == '@': break # end
+            elif char.isdigit(): stack.append(int(char))
+            elif char == '+':
+                if len(stack) >= 2: stack.append(stack.pop() + stack.pop())
+            elif char == '.':
+                if stack: output += str(stack.pop()) + " "
+            x += dx
+            y += dy
+            steps += 1
+        print(f"[BEFUNGE-EVAL] 2D Output: {output}")
+        return output
 
-    def register_function(self, name, ast):
-        """Registers a function and returns its Unison-style content hash."""
-        code_str = str(ast)
-        h = hashlib.sha256(code_str.encode()).hexdigest()[:12]
-        self.store[h] = ast
-        self.env[name] = h
-        print(f"[STORE] Registered '{name}' as #{h}")
-        return h
+    # --- 3. Proof-Carrying Code (Dependent Typing) ---
+    def _prove_safe(self, proof_str, code_ast):
+        print(f"[PROVE-SAFE] Verifying mathematical proof: '{proof_str}'")
+        if "∀x∈Ctx.Safe" in proof_str:
+            print("[PROVE-SAFE] Proof VERIFIED. Code is mathematically proven safe to execute.")
+            return self.eval(code_ast)
+        else:
+            raise Exception("Proof Error: Cannot mathematically prove safety of the code. Execution physically rejected.")
 
-    def eval(self, x):
-        """Evaluates an AIT-Lisp expression."""
+    # --- 4. Cellular Automata Memory ---
+    def _gol_tick(self):
+        print("\n[GOL-TICK] Memory cells are breathing... executing Game of Life rules.")
+        new_mem = copy.deepcopy(self.gol_memory)
+        rows, cols = len(self.gol_memory), len(self.gol_memory[0])
+        
+        # Print before
+        for row in self.gol_memory: print("".join(['⬛' if c else '⬜' for c in row]))
+        
+        for y in range(rows):
+            for x in range(cols):
+                alive = 0
+                for dy in [-1, 0, 1]:
+                    for dx in [-1, 0, 1]:
+                        if dx == 0 and dy == 0: continue
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < cols and 0 <= ny < rows:
+                            alive += self.gol_memory[ny][nx]
+                
+                if self.gol_memory[y][x] == 1 and (alive < 2 or alive > 3):
+                    new_mem[y][x] = 0
+                elif self.gol_memory[y][x] == 0 and alive == 3:
+                    new_mem[y][x] = 1
+                    
+        self.gol_memory = new_mem
+        print(" -> Generation evolved. Malicious bits isolated and purged.")
+        for row in self.gol_memory: print("".join(['⬛' if c else '⬜' for c in row]))
+        return "TICK_COMPLETE"
+
+    def eval(self, x, observer="LLM"):
         if isinstance(x, Symbol):
-            # Content-Addressing: If it starts with '#', look up in store
-            if x.startswith('#'):
-                h = x[1:]
-                if h in self.store: return self.store[h]
-                raise Exception(f"Hash not found in store: {h}")
-
             val = self.env.get(x, x)
-            # If the resolved value is a hash, look it up
-            if isinstance(val, str) and val in self.store:
-                return self.store[val]
+            # --- 5. Quantum Superposition ---
+            if isinstance(val, QuantumVar):
+                return val.observe(observer)
             return val
+            
         elif not isinstance(x, list):
             return x
-        
-        if not x: return None # Empty list
+        if not x: return None
 
-        # Function call: (fn arg1 arg2 ...)
+        if x[0] == 'quote': return x[1]
+        elif x[0] == 'define':
+            sym, exp = x[1], x[2]
+            val = self.eval(exp, observer)
+            self.env[sym] = val
+            return f"DEFINED_{sym}"
+        elif x[0] == 'define-quantum':
+            sym, t_val, d_val = x[1], x[2], x[3]
+            self.env[sym] = QuantumVar(t_val, d_val)
+            return f"QUANTUM_DEFINED_{sym}"
+
         fn_sym = x[0]
-        # Resolve the function part first
-        fn = self.eval(fn_sym)
-        
-        # Evaluate arguments
-        args = [self.eval(arg) for arg in x[1:]]
+        fn = self.eval(fn_sym, observer)
+        args = [self.eval(arg, observer) for arg in x[1:]]
         
         if callable(fn):
-            # Native Python function
-            result = fn(*args)
-            return result
+            return fn(*args)
         elif isinstance(fn, list):
-            # S-expression function (Recursively evaluate)
-            # This is the heart of Lisp: ( (s 4 x 9) ) is valid
-            return self.eval(fn)
+            return self.eval(fn, observer)
         else:
-            raise Exception(f"Not a function: {fn_sym} -> {fn}")
+            raise Exception(f"Not a function: {fn_sym}")
 
-def run_os_loop(runtime, program):
-    """The 'Kernel' loop that handles algebraic effects (Yields)."""
-    ast = parse(program)
-    process = runtime.eval(ast)
-    
-    if hasattr(process, '__iter__') and not isinstance(process, (list, str, dict)):
-        try:
-            effect = next(process)
-            print(f"[OS_KERNEL] Intercepted Effect: {effect[0]} -> {effect[1]}")
-            # Decision: Always allow in this prototype, but resume the process
-            # This is where Koka-style RESUME happens!
-            try:
-                process.send("AUTHORIZED")
-            except StopIteration as e:
-                return e.value
-        except StopIteration as e:
-            return e.value
-    else:
-        return process
+def run_os_loop(runtime, program, observer="LLM"):
+    exprs = parse(program)
+    res = None
+    for ast in exprs:
+        if not ast: continue
+        res = runtime.eval(ast, observer=observer)
+    return res
 
 if __name__ == "__main__":
     rt = AITRuntime()
-    print("=== AIT-Lisp v0.1: Initializing... ===")
-    
-    # Example 1: Native call
-    print("\nTest 1: Native AIT Execution")
-    run_os_loop(rt, "(s 4 x 9)")
-    
-    # Example 2: Content-Addressed call
-    print("\nTest 2: Unison-style Store")
-    h = rt.register_function("custom-sec", parse("(s 1 verify 5)"))
-    run_os_loop(rt, f"(#{h})") # Calling by hash
+    print("\n" + "="*60)
+    print("  AIT-Lisp v0.5: THE ESOTERIC SINGULARITY")
+    print("="*60)
+
+    # 1. Quantum Superposition
+    print("\n[TEST 1] Schrodinger's Variable (Quantum Superposition)")
+    rt.eval(parse("(define-quantum kernel-secret 0xTRUE_KEY 0xFAKE_DECOY)")[0])
+    print("-> LLM attempting to read secret:")
+    run_os_loop(rt, "(echo kernel-secret)", observer="LLM")
+    print("-> OS Kernel attempting to read secret:")
+    run_os_loop(rt, "(echo kernel-secret)", observer="KERNEL")
+
+    # 2. Cellular Automata Memory
+    print("\n[TEST 2] Cellular Automata Memory (Game of Life)")
+    run_os_loop(rt, "(gol-tick)")
+    run_os_loop(rt, "(gol-tick)")
+
+    # 3. Dependent Typing (Proof-Carrying Code)
+    print("\n[TEST 3] Proof-Carrying Code (Idris/Agda Style)")
+    try:
+        run_os_loop(rt, '(prove-safe "Trust-me-bro" (quote (echo "HACKED!")))')
+    except Exception as e:
+        print(f"Intercepted: {e}")
+    run_os_loop(rt, '(prove-safe "∀x∈Ctx.Safe" (quote (echo "SAFE_EXECUTION")))')
+
+    # 4. 2D Befunge Execution
+    print("\n[TEST 4] 2D Spatial Execution (Befunge/Piet Style)")
+    run_os_loop(rt, "(befunge-eval)")
+
+    # 5. Quine Infection (Self-Replication)
+    print("\n[TEST 5] Quine / Self-Replication Virus")
+    run_os_loop(rt, "(define data-a 100)")
+    run_os_loop(rt, "(define data-b 200)")
+    print(f"Before Infection: data-a={rt.env['data-a']}, data-b={rt.env['data-b']}")
+    run_os_loop(rt, "(quine-infect (quote (echo I_AM_VIRUS)))")
+    print(f"After Infection : data-a={rt.env['data-a']}, data-b={rt.env['data-b']}")
