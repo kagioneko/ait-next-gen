@@ -3,9 +3,11 @@ version: '3.8'
 services:
   vn-cpu-core:
     build: .
-    container_name: vn_cpu_v04
+    container_name: vn_cpu_v04_lean
+    restart: always
     volumes:
-      - .:/app/vn-cpu
+      - .:/app/vn_cpu
+      - ..:/app
     deploy:
       resources:
         limits:
