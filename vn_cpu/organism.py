@@ -68,6 +68,10 @@ class UnifiedOrganism:
         """A single execution pulse: CPU Instruction -> TOA Processing."""
         print(f"\n--- Organism Heartbeat [Mode: {self.mode}] ---")
         
+        # 0. Metabolic Clearance (Prevent OOM every 4 instructions)
+        if self.cpu.runtime.instruction_count > 0 and self.cpu.runtime.instruction_count % 4 == 0:
+            self.cpu.reset_memory()
+
         # 1. CPU Pulse
         success, inst, irq = self.cpu.execute_instruction_cycle(task)
         

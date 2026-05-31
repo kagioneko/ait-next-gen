@@ -10,7 +10,8 @@ VN-CPU moves away from free-form chat generation. It enforces a strict **Neural 
 - **SEL (Semantic Enzyme Language):** A metabolic 'soup' where enzymes (security/logic) consume threats.
 - **CRL (Cognitive Resonance Language):** Vector-based analog logic using 'Chords' and 'Resonators'.
 - **FTC (Fluidic Token Circuit):** Analog flow of context based on 'Token Pressure'.
-- **UNO (Unified Neural Organism):** A modular bridge that connects all of the above into a single entity.
+- **UNO (Unified Neural Organism):** A modular bridge that connects all of the above.
+- **Metabolic Clearance:** Periodic KV-cache flushing to ensure indefinite survival in memory-constrained environments.
 
 ## 🛠️ Architecture
 
@@ -21,11 +22,13 @@ VN-CPU moves away from free-form chat generation. It enforces a strict **Neural 
     - **Sampler Mask:** Forces output into valid ISA token paths.
     - **Logit Bias:** Induces semantic intent based on high-level tasks.
     - **Neural Throttle:** 20ms sleep per token to ensure zero-starvation of host services.
+    - **Metabolic Reset:** Automatically flushes neural memory every 4 instructions to prevent OOM.
 
 ### 2. Runtime & Safety
 - **CPL Validator:** Detects logical contradictions in real-time.
 - **Rollback Manager:** Automatic state recovery via instruction-level checkpoints.
-- **Actuator:** Bridges neural instructions to physical register operations (Memory/Security).
+- **Actuator:** Bridges neural instructions to physical register operations.
+- **Stress Test:** `stress_test.py` - A 'Biohazard Simulation' that injects random toxins to verify organism resilience.
 
 ## 📁 Directory Structure
 ```text
@@ -51,6 +54,9 @@ docker run -d --name vn_cpu_v04_lean -m 512m --cpus 0.5 -v $(pwd)/vn_cpu:/app/vn
 
 # Execute a Security Audit & Fix cycle
 docker exec vn_cpu_v04_lean python3 /app/vn-cpu/core/vn_neural_core_lean.py
+
+# Run the 20-cycle Biohazard Stress Test
+docker exec vn_cpu_v04_lean python3 /app/vn_cpu/stress_test.py
 ```
 
 ---

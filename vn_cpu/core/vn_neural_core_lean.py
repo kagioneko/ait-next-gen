@@ -86,6 +86,11 @@ class VNNeuralCoreLean:
         
         return bias
 
+    def reset_memory(self):
+        """Metabolic Clearance: Flushes the KV cache to prevent OOM."""
+        logger.warning("♻️ [CLEARANCE] Flushing Neural KV Cache (Metabolic Reset)")
+        self.llm.reset() # This clears the internal state and context history
+
     def execute_instruction_cycle(self, task: str):
         """Generates one 4-token instruction using logit masking and bias."""
         prompt = self.build_prompt(task)
