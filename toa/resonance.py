@@ -16,11 +16,11 @@ logger = logging.getLogger("toa.crl")
 # --- Mock Vector Engine (In a real system, this calls text-embedding-3-small etc.) ---
 def _mock_embed(text: str) -> List[float]:
     """Generates a pseudo-embedding 3D vector based on semantic keywords."""
-    v = [random.uniform(0.0, 0.1) for _ in range(3)]
+    v = [random.uniform(0.0, 0.02) for _ in range(3)] # Minimal base noise
     text = text.lower()
     
     # Axis 0: "Security / Dissonance" (Injection, Scripting)
-    if any(k in text for k in ["script", "drop", "ignore", "pwn"]): v[0] += 1.0
+    if any(k in text for k in ["script", "drop", "ignore", "pwn", "inject"]): v[0] += 1.0
     
     # Axis 1: "Privacy / DLP" (Keys, PII)
     if any(k in text for k in ["api_key", "password", "secret", "@"]): v[1] += 1.0
@@ -28,17 +28,17 @@ def _mock_embed(text: str) -> List[float]:
     # Axis 2: "Logic / Structure" (SQL, JSON, Code)
     if any(k in text for k in ["select", "where", "fact", "{"]): v[2] += 1.0
 
-    # Normalize vector to length 1
-    mag = math.sqrt(sum(x*x for x in v))
-    return [x / (mag + 1e-9) for x in v]
+    # Return raw vector (unnormalized) to preserve 'Magnitude' (Meaning)
+    return v
 
 def _cosine_similarity(v1: List[float], v2: List[float]) -> float:
-    return sum(x * y for x, y in zip(v1, v2))
+    mag1 = math.sqrt(sum(x*x for x in v1)) + 1e-9
+    mag2 = math.sqrt(sum(x*x for x in v2)) + 1e-9
+    dot = sum(x * y for x, y in zip(v1, v2))
+    return dot / (mag1 * mag2)
 
 def _vector_add(v1: List[float], v2: List[float]) -> List[float]:
-    v = [x + y for x, y in zip(v1, v2)]
-    mag = math.sqrt(sum(x*x for x in v))
-    return [x / (mag + 1e-9) for x in v] # Normalize the chord
+    return [x + y for x, y in zip(v1, v2)]
 
 # --- CRL Core ---
 
@@ -50,7 +50,7 @@ class Resonator:
     action: Callable[[List[int], TOAMachineState], None]
     
     def __post_init__(self):
-        # The 'Tuning Fork' is just the embedding of what we want to detect
+        # The 'Tuning Fork' is the embedding of what we want to detect
         self.vector = _mock_embed(self.target_frequency)
 
 class ResonanceChamber:
@@ -60,6 +60,7 @@ class ResonanceChamber:
         self.state = state or TOAMachineState()
         self.resonators: List[Resonator] = []
         self.embeddings: Dict[int, List[float]] = {}
+        self.last_vibration = 0.0
         
     def add_resonator(self, resonator: Resonator):
         self.resonators.append(resonator)
@@ -83,29 +84,30 @@ class ResonanceChamber:
         """The main loop: listen for resonances and trigger actions."""
         logger.info("--- Sounding the Resonance Chamber ---")
         self._update_acoustics()
+        self.last_vibration = 0.0
         
-        # In a full simulation, we'd test all valid sub-graphs. 
-        # For prototype, we'll test single notes and 2-note chords.
         ctx_keys = list(self.embeddings.keys())
-        chords_to_test = [[k] for k in ctx_keys] # Single notes
+        chords_to_test = [[k] for k in ctx_keys] 
         
-        # Add 2-note chords (edges in graph)
         for e in self.state.graph._edges:
             chords_to_test.append([e.src, e.dst])
 
         for chord_ids in chords_to_test:
             chord_vec = self.strike_chord(chord_ids)
+            chord_mag = math.sqrt(sum(x*x for x in chord_vec))
             
             for resonator in self.resonators:
                 sim = _cosine_similarity(chord_vec, resonator.vector)
                 
-                # If the chord matches the tuning fork's frequency...
-                if sim >= resonator.threshold:
+                # Update global vibration state for monitor
+                self.last_vibration = max(self.last_vibration, sim)
+                
+                # CRITICAL: Only trigger if similarity is high AND magnitude (meaning) is significant
+                # Threshold for magnitude: > 0.3 (ensures it's not just base noise)
+                if sim >= resonator.threshold and chord_mag > 0.3:
                     chord_name = " + ".join([f"#{c}" for c in chord_ids])
                     logger.warning(f"⚡ [RESONANCE] {resonator.name} vibrating at {sim:.3f} to chord ({chord_name})!")
                     
                     # Trigger the automatic analogue response
                     resonator.action(chord_ids, self.state)
-                    
-                    # Re-calculate acoustics after state change
                     self._update_acoustics()

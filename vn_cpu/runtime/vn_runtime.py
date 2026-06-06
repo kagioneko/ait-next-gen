@@ -125,6 +125,18 @@ class VNRuntime:
             self.validator.add_edge("ctx1", edge_type, f"ctx{target}")
             msg = f"GRAPH: Linked ctx1 --({edge_type})--> ctx{target}"
 
+        # Domain: Agent (a)
+        elif domain == 'a':
+            agent_name = f"Agent_{target}"
+            if action == 's': # Status
+                msg = f"AGENT STATUS: {agent_name} is online and awaiting orders."
+            elif action == 't': # Task
+                msg = f"AGENT TASK: Assigned task to {agent_name} with priority {priority}."
+            elif action == 'a': # Actuate
+                msg = f"AGENT ACTUATE: Triggering primary function for {agent_name}."
+            else:
+                msg = f"AGENT COMMAND: Unknown action '{action}' for {agent_name}."
+
         logger.info(f"[ACTUATOR] {msg}")
         return msg
 

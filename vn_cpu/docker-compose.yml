@@ -8,6 +8,7 @@ services:
     volumes:
       - .:/app/vn_cpu
       - ..:/app
+      - /home/mayutama/shii-chan-mcp:/app/shii-chan-mcp
     deploy:
       resources:
         limits:
@@ -16,4 +17,4 @@ services:
     # Strict isolation
     cpu_shares: 256
     mem_limit: 512m
-    command: tail -f /dev/null
+    command: python3 /app/vn_cpu/organism.py --mode all --daemon

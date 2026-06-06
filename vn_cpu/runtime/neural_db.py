@@ -70,3 +70,19 @@ class NeuralDB:
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("INSERT INTO snapshots (timestamp, register_data) VALUES (?, ?)",
                          (datetime.now(), json.dumps(clean_ctx)))
+
+    def prune(self, days: int = 7):
+        """Removes records older than 'days' to prevent bloat."""
+        logger.info(f"Pruning Neural DB records older than {days} days...")
+        with sqlite3.connect(self.db_path) as conn:
+            c = conn.cursor()
+            limit_date = datetime.now()
+            # Simple SQL to delete old records
+            # Note: timestamp in SQLite depends on how it was inserted. 
+            # Here we inserted datetime.now() which is usually a string.
+            for table in ["pulses", "metabolism", "resonance", "snapshots"]:
+                c.execute(f"DELETE FROM {table} WHERE timestamp < date('now', '-{days} days')")
+            conn.commit()
+            c.execute("VACUUM")
+            conn.commit()
+        logger.info("✅ Neural DB pruning complete.")

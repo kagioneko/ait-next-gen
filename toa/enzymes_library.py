@@ -88,7 +88,8 @@ def create_system_enzymes(backend):
             r"AIza[0-9A-Za-z-_]{35}", # Google API Key
             r"sk-[a-zA-Z0-9]{48}",    # OpenAI/Anthropic Key
             r"-----BEGIN RSA PRIVATE KEY-----",
-            r"\"password\":\s*\".+\""
+            r"\"password\":\s*\".+\"",
+            r"password\s+is\s+['\"].+['\"]" # Natural language password
         ]
         return any(re.search(p, val) for p in patterns)
         
